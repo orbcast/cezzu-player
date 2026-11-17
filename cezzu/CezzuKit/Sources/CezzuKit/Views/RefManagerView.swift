@@ -1,65 +1,182 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// ref 管理：已安装列表、切换当前 ref、添加、移除。
+/// ref 管理页的文案。抽出来是为了能单测，视图里不放判断。
+enum RefManagerText {
+    /// 卡片副标题：`v0.2 · 脚本 · 可访问 3 个域名`。
+    static func summary(for manifest: RefManifest) -> String {
+        var parts = ["v\(manifest.version)"]
+        switch manifest.kind {
+        case .script:
+            parts.append("脚本")
+            if !manifest.allowedHosts.isEmpty {
+                parts.append("可访问 \(manifest.allowedHosts.count) 个域名")
+            }
+        case .legacyRules:
+            parts.append("规则集")
+        }
+        if !manifest.config.isEmpty { parts.append("需要配置") }
+        return parts.joined(separator: " · ")
+    }
+}
+
+/// ref 管理：已安装列表、切换当前 ref、添加、配置、移除。
+///
+/// 一张卡片一个 ref：点卡片切换，右侧 `…` 菜单里配置 / 移除（不靠滑动手势，鼠标也能用）。
 public struct RefManagerView: View {
     let store: RefStore
     @State private var showAdd = false
     @State private var configuring: RefManifest?
+    @State private var removing: RefManifest?
 
     public init(store: RefStore) {
         self.store = store
     }
 
     public var body: some View {
-        List {
-            Section {
-                if store.installed.isEmpty {
-                    Text("还没有添加 ref").foregroundStyle(.secondary)
-                }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("当前 ref 决定搜索和播放的来源。同一时间使用一个，点击卡片即可切换。")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.bottom, 4)
+
                 ForEach(store.installed) { manifest in
-                    Button {
-                        store.currentID = manifest.id
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(manifest.name)
-                                Text("v\(manifest.version)").font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if store.currentID == manifest.id {
-                                Image(systemName: "checkmark").foregroundStyle(Color.accentColor)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .swipeActions {
-                        Button("移除", role: .destructive) { store.remove(manifest.id) }
-                        if !manifest.config.isEmpty {
-                            Button("配置") { configuring = manifest }.tint(.blue)
-                        }
-                    }
-                    .contextMenu {
-                        if !manifest.config.isEmpty {
-                            Button("配置…") { configuring = manifest }
-                        }
-                        Button("移除", role: .destructive) { store.remove(manifest.id) }
-                    }
+                    RefCard(
+                        manifest: manifest,
+                        isCurrent: store.currentID == manifest.id,
+                        onSelect: {
+                            withAnimation(.easeOut(duration: 0.2)) { store.currentID = manifest.id }
+                        },
+                        onConfigure: { configuring = manifest },
+                        onRemove: { removing = manifest }
+                    )
                 }
-            } header: {
-                Text("当前 ref 决定搜索和播放的来源")
-            } footer: {
-                Text("同一时间使用一个 ref，点选切换。ref 是运行在沙箱里的脚本，只添加你信任的来源。")
+
+                addButton
+
+                Label("ref 是运行在沙箱里的脚本，只添加你信任的来源。", systemImage: "lock.shield")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 6)
             }
+            .padding(24)
+            .frame(maxWidth: 720, alignment: .leading)
+            .frame(maxWidth: .infinity)
         }
-        .navigationTitle("Ref")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button("添加", systemImage: "plus") { showAdd = true }
-            }
-        }
+        .navigationTitle("数据源")
         .sheet(isPresented: $showAdd) { AddRefSheet(store: store) }
         .sheet(item: $configuring) { manifest in RefConfigSheet(store: store, manifest: manifest) }
+        .confirmationDialog(
+            "移除 \(removing?.name ?? "")？",
+            isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("移除", role: .destructive) {
+                if let removing { withAnimation { store.remove(removing.id) } }
+                removing = nil
+            }
+        } message: {
+            Text("已保存的配置也会一并删除。")
+        }
+    }
+
+    private var addButton: some View {
+        Button { showAdd = true } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "plus")
+                Text(store.installed.isEmpty ? "添加第一个 ref" : "添加 ref")
+            }
+            .font(.body.weight(.medium))
+            .foregroundStyle(Color.accentColor)
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .background {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(
+                        Color.accentColor.opacity(0.45),
+                        style: StrokeStyle(lineWidth: 1, dash: [6, 4])
+                    )
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct RefCard: View {
+    let manifest: RefManifest
+    let isCurrent: Bool
+    let onSelect: () -> Void
+    let onConfigure: () -> Void
+    let onRemove: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        HStack(spacing: 0) {
+            Button(action: onSelect) {
+                HStack(spacing: 14) {
+                    Image(systemName: "puzzlepiece.extension.fill")
+                        .font(.title3)
+                        .foregroundStyle(isCurrent ? Color.white : Color.secondary)
+                        .frame(width: 42, height: 42)
+                        .background(
+                            Circle().fill(isCurrent ? Color.accentColor : Color.primary.opacity(0.08))
+                        )
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(manifest.name)
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Text(RefManagerText.summary(for: manifest))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    if isCurrent {
+                        Text("使用中")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.accentColor)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Capsule().fill(Color.accentColor.opacity(0.15)))
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Menu {
+                if !manifest.config.isEmpty {
+                    Button("配置…", systemImage: "slider.horizontal.3", action: onConfigure)
+                }
+                Button("移除", systemImage: "trash", role: .destructive, action: onRemove)
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 36, height: 36)
+                    .contentShape(Rectangle())
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .padding(.leading, 6)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(shape.fill(Color.primary.opacity(hovering ? 0.10 : 0.06)))
+        .overlay {
+            shape.strokeBorder(
+                isCurrent ? Color.accentColor.opacity(0.7) : Color.primary.opacity(0.08),
+                lineWidth: isCurrent ? 1.5 : 1
+            )
+        }
+        .onHover { hovering = $0 }
+        .animation(.easeOut(duration: 0.15), value: hovering)
     }
 }
 
