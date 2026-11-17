@@ -56,6 +56,12 @@ public final class JSRef: Ref, @unchecked Sendable {
         return try decode([RefSearchItem].self, from: data, what: "search")
     }
 
+    /// 脚本的 `search(keyword, query)` 第二个参数是 `{ sort, filters }`。老脚本只声明一个参数，JS 会忽略多出来的。
+    public func search(_ keyword: String, query: RefSearchQuery) async throws -> [RefSearchItem] {
+        let data = try await call("search", argument: keyword, extra: query.jsValue, optional: false)!
+        return try decode([RefSearchItem].self, from: data, what: "search")
+    }
+
     public func home() async throws -> [RefSection] {
         guard let data = try await call("home", argument: "", optional: true) else { return [] }
         return try decode([RefSection].self, from: data, what: "home")
@@ -141,9 +147,12 @@ public final class JSRef: Ref, @unchecked Sendable {
     }
 
     /// `optional` 为 true 且脚本没定义该函数（或返回 null）时得到 nil。
-    private func call(_ function: String, argument: Any, optional: Bool) async throws -> Data? {
+    private func call(
+        _ function: String, argument: Any, extra: Any? = nil, optional: Bool
+    ) async throws -> Data? {
         let gate = ResumeOnce<Data?>()
         nonisolated(unsafe) let argument = argument
+        nonisolated(unsafe) let extra = extra
         let timeout = callTimeout
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data?, Error>) in
@@ -153,7 +162,7 @@ public final class JSRef: Ref, @unchecked Sendable {
                     gate.fail(RefError.timeout)
                 }
                 queue.async { [self] in
-                    invoke(function, argument: argument, optional: optional, gate: gate)
+                    invoke(function, arguments: [argument] + (extra.map { [$0] } ?? []), optional: optional, gate: gate)
                 }
             }
         } onCancel: {
@@ -162,7 +171,7 @@ public final class JSRef: Ref, @unchecked Sendable {
     }
 
     /// 必须在 `queue` 上调用。
-    private func invoke(_ function: String, argument: Any, optional: Bool, gate: ResumeOnce<Data?>) {
+    private func invoke(_ function: String, arguments: [Any], optional: Bool, gate: ResumeOnce<Data?>) {
         let recorder = ExceptionRecorder()
         context.exceptionHandler = { _, exception in
             recorder.message = exception?.toString()
@@ -175,7 +184,7 @@ public final class JSRef: Ref, @unchecked Sendable {
             return
         }
 
-        let outcome = fn.call(withArguments: [argument])
+        let outcome = fn.call(withArguments: arguments)
         if let message = recorder.message {
             gate.fail(Self.map(message))
             return

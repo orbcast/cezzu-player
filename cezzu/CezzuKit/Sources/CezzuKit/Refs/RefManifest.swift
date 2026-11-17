@@ -58,6 +58,8 @@ public struct RefManifest: Codable, Hashable, Sendable, Identifiable {
     public var allowedHosts: [String]
     public var capabilities: [Capability]
     public var config: [ConfigField]
+    /// 声明支持的搜索排序 / 筛选；没声明就是只有关键词搜索。
+    public var search: RefSearchSpec
 
     public init(
         refsApi: Int = RefManifest.supportedAPI,
@@ -68,7 +70,8 @@ public struct RefManifest: Codable, Hashable, Sendable, Identifiable {
         entry: String = "main.js",
         allowedHosts: [String],
         capabilities: [Capability] = [],
-        config: [ConfigField] = []
+        config: [ConfigField] = [],
+        search: RefSearchSpec = .none
     ) {
         self.refsApi = refsApi
         self.kind = kind
@@ -79,10 +82,11 @@ public struct RefManifest: Codable, Hashable, Sendable, Identifiable {
         self.allowedHosts = allowedHosts
         self.capabilities = capabilities
         self.config = config
+        self.search = search
     }
 
     private enum CodingKeys: String, CodingKey {
-        case refsApi, kind, id, name, version, entry, allowedHosts, capabilities, config
+        case refsApi, kind, id, name, version, entry, allowedHosts, capabilities, config, search
     }
 
     public init(from decoder: Decoder) throws {
@@ -96,6 +100,7 @@ public struct RefManifest: Codable, Hashable, Sendable, Identifiable {
         self.allowedHosts = try c.decodeIfPresent([String].self, forKey: .allowedHosts) ?? []
         self.capabilities = try c.decodeIfPresent([Capability].self, forKey: .capabilities) ?? []
         self.config = try c.decodeIfPresent([ConfigField].self, forKey: .config) ?? []
+        self.search = try c.decodeIfPresent(RefSearchSpec.self, forKey: .search) ?? .none
     }
 
     public func validate() throws {
@@ -115,6 +120,7 @@ public struct RefManifest: Codable, Hashable, Sendable, Identifiable {
         guard Set(config.map(\.key)).count == config.count else {
             throw RefError.invalidManifest("config 的 key 不能重复")
         }
+        try search.validate()
         guard kind == .legacyRules || !allowedHosts.isEmpty else {
             throw RefError.invalidManifest("allowedHosts 不能为空")
         }

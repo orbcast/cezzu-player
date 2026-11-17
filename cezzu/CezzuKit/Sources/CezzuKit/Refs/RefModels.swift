@@ -131,6 +131,9 @@ public protocol Ref: Sendable {
     func resolve(episodeID: String) async throws -> RefMedia
 
     // 可选：ref 没实现时返回空，界面对应位置留空。
+    /// 带排序 / 筛选的搜索。只有清单声明了 `search` 的 ref 才会收到非空的 `query`；
+    /// 没实现就退回只用关键词的 `search`。
+    func search(_ keyword: String, query: RefSearchQuery) async throws -> [RefSearchItem]
     /// 首页分区。
     func home() async throws -> [RefSection]
     /// 按标签 / 分类浏览。`tag` 为空表示不限。
@@ -140,6 +143,9 @@ public protocol Ref: Sendable {
 }
 
 extension Ref {
+    public func search(_ keyword: String, query: RefSearchQuery) async throws -> [RefSearchItem] {
+        try await search(keyword)
+    }
     public func home() async throws -> [RefSection] { [] }
     public func browse(tag: String, page: Int) async throws -> [RefSearchItem] { [] }
     public func detail(id: String) async throws -> RefSearchItem? { nil }
