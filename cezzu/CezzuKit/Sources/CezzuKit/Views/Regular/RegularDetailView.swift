@@ -12,7 +12,7 @@ enum RegularDetailLayout {
     /// 高度下限 = 海报 + 信息栏排下来需要的高度（含顶部让位）。
     static let heroMinHeight: CGFloat = 520
     static let heroMaxHeight: CGFloat = 880
-    /// 低于这个高度走精简版：收起原名和简介。
+    /// 低于这个高度走精简版：收起原名，简介压到 2 行。
     static let heroCompactThreshold: CGFloat = 620
     /// 二级页没有悬浮顶栏，但要让开 macOS 交通灯和系统返回键。
     static let heroTopInset: CGFloat = 72
@@ -66,6 +66,11 @@ enum RegularDetailLayout {
 
     static func isCompactHero(heroHeight: CGFloat) -> Bool {
         heroHeight < heroCompactThreshold
+    }
+
+    /// Hero 里简介的行数。精简版也要有简介，只是压短；不能整块丢掉。
+    static func heroSummaryLineLimit(heroHeight: CGFloat) -> Int {
+        isCompactHero(heroHeight: heroHeight) ? 2 : 3
     }
 
     static func posterHeight(heroHeight: CGFloat) -> CGFloat {
@@ -334,7 +339,7 @@ public struct RegularDetailView: View {
 
     @ViewBuilder
     private func heroCopy(heroHeight: CGFloat) -> some View {
-        // 窗口矮下来时先丢可选信息（原名、简介），把间距也收紧。
+        // 窗口矮下来时先丢可选信息（原名），把间距也收紧；简介保留，只压到 2 行。
         let compact = RegularDetailLayout.isCompactHero(heroHeight: heroHeight)
         VStack(alignment: .leading, spacing: 0) {
             if !model.metaTags.isEmpty {
@@ -363,9 +368,9 @@ public struct RegularDetailView: View {
             heroFactChips
                 .padding(.top, compact ? 14 : 20)
 
-            if !compact, !model.summary.isEmpty {
-                summaryQuote
-                    .padding(.top, 20)
+            if !model.summary.isEmpty {
+                summaryQuote(lineLimit: RegularDetailLayout.heroSummaryLineLimit(heroHeight: heroHeight))
+                    .padding(.top, compact ? 14 : 20)
             }
 
             heroActionBar
@@ -396,7 +401,7 @@ public struct RegularDetailView: View {
 
     /// 简介 —— 左侧一道竖线，读起来是「引文」而不是又一段正文。
     @ViewBuilder
-    private var summaryQuote: some View {
+    private func summaryQuote(lineLimit: Int) -> some View {
         HStack(alignment: .top, spacing: 14) {
             Capsule()
                 .fill(palette.textPrimary.opacity(0.28))
@@ -404,7 +409,7 @@ public struct RegularDetailView: View {
             Text(model.summary)
                 .font(.callout)
                 .foregroundStyle(palette.textSecondary)
-                .lineLimit(3)
+                .lineLimit(lineLimit)
                 .lineSpacing(4)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)

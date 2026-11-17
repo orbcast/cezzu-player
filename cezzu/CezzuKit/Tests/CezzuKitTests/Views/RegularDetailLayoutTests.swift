@@ -97,4 +97,12 @@ struct RegularDetailLayoutTests {
             heroHeight: RegularDetailLayout.heroMaxHeight
         ))
     }
+
+    @Test("the compact hero still shows the summary, just shorter")
+    func compactHeroKeepsSummary() {
+        let compact = RegularDetailLayout.heroSummaryLineLimit(heroHeight: RegularDetailLayout.heroMinHeight)
+        let full = RegularDetailLayout.heroSummaryLineLimit(heroHeight: RegularDetailLayout.heroMaxHeight)
+        #expect(compact >= 1, "精简版不能把简介行数压到 0")
+        #expect(compact < full)
+    }
 }
