@@ -146,6 +146,9 @@ struct CezzuRootContent: View {
 
     var body: some View {
         Group {
+            if RefGate.isRequired(installed: session.refs.installed) {
+                RefRequiredGateView(store: session.refs)
+            } else {
             #if os(iOS)
                 if sizeClass == .compact {
                     CompactRootView(session: session)
@@ -155,8 +158,9 @@ struct CezzuRootContent: View {
             #else
                 RegularShellView(session: session)
             #endif
-        }
             }
+        }
+    }
 }
 
 // MARK: - iPhone 外壳
