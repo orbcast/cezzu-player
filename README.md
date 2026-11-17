@@ -21,13 +21,22 @@ iOS 17+ / macOS 14+ 的在线视频播放器（SwiftUI，Swift 6），界面是�
 一个 ref = `manifest.json` + 入口文件。入口是一段 JS 脚本，实现三个函数，运行在 JavaScriptCore 沙箱里：
 
 ```js
-search(keyword)    -> [{ id, title, cover?, group?, summary?, rating?, tags?, ... }]
+search(keyword, query?) -> [{ id, title, cover?, group?, summary?, rating?, tags?, ... }]
 episodes(id)       -> [{ name, episodes: [{ id, title }] }]
 resolve(episodeId) -> { url, kind?, headers?, expiresAt? } | { sniff, ... }
 // 可选，没实现则界面留空
 home()             -> [{ title, items: [Item] }]
 browse({tag,page}) -> [Item]
 detail(id)         -> Item | null
+```
+
+搜索的排序和筛选由 ref 在 `manifest.json` 的 `search` 里声明，播放器只渲染声明过的；没声明就只有关键词搜索。`query` 是 `{ sort, filters }`，`sort` 为空表示默认排序，关键词可以为空：
+
+```json
+"search": {
+  "sorts":   [{ "id": "hot", "label": "热度" }],
+  "filters": [{ "key": "year", "label": "年份", "options": [{ "value": "2025", "label": "2025" }] }]
+}
 ```
 
 沙箱里只有 `http`（受 `allowedHosts` 约束）、`html`（XPath）、`crypto`（需声明）、`log`、`now`。完整规范见协议仓库。

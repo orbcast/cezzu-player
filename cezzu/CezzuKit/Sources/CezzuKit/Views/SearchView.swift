@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// 窄屏（iPhone）搜索屏 —— 影院式暗底：大搜索框 + 一行可展开的筛选 chip，
-/// 未搜索时是"最近搜索 / 常用标签 / 首页分区"三段浏览，不是一张空面板。
+/// 未搜索时是"最近搜索 / 首页分区"两段浏览，不是一张空面板。
 ///
 /// 宽屏搜索见 `RegularSearchView`；宽窄屏分开维护，共用 `Views/Search/SearchChrome.swift` 的元件。
 public struct SearchView: View {
@@ -10,9 +10,7 @@ public struct SearchView: View {
     var onTapItem: (CatalogItem) -> Void
     var onTapSection: (HomeSection) -> Void
     @FocusState private var isInputFocused: Bool
-    @FocusState private var isTagDraftFocused: Bool
     @State private var expandedFacet: SearchFacet?
-    @State private var newTagDraft: String = ""
 
     private let metrics = SearchMetrics.compact
 
@@ -51,9 +49,7 @@ public struct SearchView: View {
                         )
                         SearchFilterBar(
                             model: model,
-                            expandedFacet: $expandedFacet,
-                            newTagDraft: $newTagDraft,
-                            isTagDraftFocused: $isTagDraftFocused
+                            expandedFacet: $expandedFacet
                         )
                         content
                     }
@@ -66,6 +62,7 @@ public struct SearchView: View {
             .scrollToTop()
         }
         .environment(\.colorScheme, .dark)
+        .task { await model.refreshSpec() }
         .navigationTitle("")
         .toolbarBackground(.hidden, for: .automatic)
     }
@@ -119,7 +116,6 @@ public struct SearchView: View {
                 title: "没有找到匹配的剧集",
                 message: "换个说法，或松一松下面的筛选。"
             )
-            SearchTagCloudSection(model: model, title: "换个标签试试")
         }
     }
 
@@ -153,7 +149,7 @@ public struct SearchView: View {
         }
     }
 
-    /// 未发起搜索：最近搜索 → 常用标签 → 与首页一致的分区浏览。
+    /// 未发起搜索：最近搜索 → 与首页一致的分区浏览。
     @ViewBuilder
     private var idle: some View {
         VStack(alignment: .leading, spacing: metrics.sectionSpacing) {
@@ -161,7 +157,6 @@ public struct SearchView: View {
                 isInputFocused = false
                 Task { await model.applyHistory(keyword) }
             }
-            SearchTagCloudSection(model: model, title: "热门标签")
 
             ForEach(browseModel.sections) { content in
                 CatalogSectionRow(

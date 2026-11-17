@@ -274,6 +274,7 @@ struct CompactRootView: View {
                 bannerStore: HomeBannerStore(refID: newID)
             )
             Task { await homeModel.loadInitialIfNeeded() }
+            Task { await searchModel.refreshSpec() }
         }
         // iOS 先 empty session 出 UI，再换 persistent：@State searchModel 不会随 session 重建，
         // 必须把 history 绑到新 store，否则搜索历史只写内存，且旧 container 释放后会闪退。

@@ -687,8 +687,7 @@ public final class DetailViewModel {
         guard !title.isEmpty else { return nil }
         let results = try? await api.search(
             keyword: title,
-            sort: .match,
-            filter: .default,
+            query: .empty,
             limit: 5,
             offset: 0
         )

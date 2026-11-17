@@ -11,7 +11,7 @@ struct PlayerDetailModelTests {
     struct StubAPI: CatalogAPIClientProtocol {
         func trending(limit: Int, offset: Int) async throws -> [CatalogItem] { [] }
         func search(tag: String, limit: Int, offset: Int) async throws -> [CatalogItem] { [] }
-        func search(keyword: String, sort: CatalogSearchSort, filter: CatalogSearchFilter, limit: Int, offset: Int)
+        func search(keyword: String, query: RefSearchQuery, limit: Int, offset: Int)
             async throws -> [CatalogItem] { [] }
         func fetchSubject(subjectID: Int) async throws -> CatalogItem { throw CatalogAPIError.unknownSubject }
         func fetchTags(subjectID: Int) async throws -> [CatalogTag] { [] }

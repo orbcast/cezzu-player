@@ -96,8 +96,7 @@ struct DetailViewModelTests {
 
         func search(
             keyword: String,
-            sort: CatalogSearchSort,
-            filter: CatalogSearchFilter,
+            query: RefSearchQuery,
             limit: Int,
             offset: Int
         ) async throws -> [CatalogItem] {
@@ -1049,7 +1048,7 @@ struct DetailViewModelMetadataTests {
         func trending(limit: Int, offset: Int) async throws -> [CatalogItem] { [] }
         func search(tag: String, limit: Int, offset: Int) async throws -> [CatalogItem] { [] }
         func search(
-            keyword: String, sort: CatalogSearchSort, filter: CatalogSearchFilter,
+            keyword: String, query: RefSearchQuery,
             limit: Int, offset: Int
         ) async throws -> [CatalogItem] { [] }
         func fetchSubject(subjectID: Int) async throws -> CatalogItem { throw notFound }
@@ -1127,7 +1126,7 @@ struct DetailViewModelMetadataTests {
         func trending(limit: Int, offset: Int) async throws -> [CatalogItem] { [] }
         func search(tag: String, limit: Int, offset: Int) async throws -> [CatalogItem] { [] }
         func search(
-            keyword: String, sort: CatalogSearchSort, filter: CatalogSearchFilter,
+            keyword: String, query: RefSearchQuery,
             limit: Int, offset: Int
         ) async throws -> [CatalogItem] { [] }
         func fetchSubject(subjectID: Int) async throws -> CatalogItem { throw Boom() }

@@ -10,9 +10,7 @@ public struct RegularSearchView: View {
     var onTapItem: (CatalogItem) -> Void
     var onTapSection: (HomeSection) -> Void
     @FocusState private var isInputFocused: Bool
-    @FocusState private var isTagDraftFocused: Bool
     @State private var expandedFacet: SearchFacet?
-    @State private var newTagDraft: String = ""
 
     private let metrics = SearchMetrics.regular
 
@@ -54,9 +52,7 @@ public struct RegularSearchView: View {
                         .frame(maxWidth: Self.fieldMaxWidth, alignment: .leading)
                         SearchFilterBar(
                             model: model,
-                            expandedFacet: $expandedFacet,
-                            newTagDraft: $newTagDraft,
-                            isTagDraftFocused: $isTagDraftFocused
+                            expandedFacet: $expandedFacet
                         )
                         content
                     }
@@ -69,6 +65,7 @@ public struct RegularSearchView: View {
             .scrollToTop()
         }
         .environment(\.colorScheme, .dark)
+        .task { await model.refreshSpec() }
         .navigationTitle("")
         .toolbarBackground(.hidden, for: .automatic)
     }
@@ -89,7 +86,7 @@ public struct RegularSearchView: View {
                 .font(.system(size: metrics.titleSize, weight: .bold))
                 .tracking(2)
                 .foregroundStyle(SearchStyle.textPrimary)
-            Text("按剧名检索，或用标签 / 评分 / 年代圈定范围。")
+            Text(model.spec.isEmpty ? "按剧名检索。" : "按剧名检索，或用筛选条件缩小范围。")
                 .font(.subheadline)
                 .foregroundStyle(SearchStyle.textSecondary)
         }
@@ -126,7 +123,6 @@ public struct RegularSearchView: View {
                 title: "没有找到匹配的剧集",
                 message: "换个说法，或松一松上面的筛选。"
             )
-            SearchTagCloudSection(model: model, title: "换个标签试试")
         }
     }
 
@@ -160,7 +156,7 @@ public struct RegularSearchView: View {
         }
     }
 
-    /// 未发起搜索：最近搜索 → 常用标签 → 与首页一致的分区浏览。
+    /// 未发起搜索：最近搜索 → 与首页一致的分区浏览。
     @ViewBuilder
     private var idle: some View {
         VStack(alignment: .leading, spacing: metrics.sectionSpacing) {
@@ -168,7 +164,6 @@ public struct RegularSearchView: View {
                 isInputFocused = false
                 Task { await model.applyHistory(keyword) }
             }
-            SearchTagCloudSection(model: model, title: "热门标签")
 
             ForEach(browseModel.sections) { content in
                 CatalogSectionRow(

@@ -6,17 +6,12 @@ import Observation
 @Observable
 public final class SearchViewModel {
     public var text: String = ""
-    /// 已选标签（多选，按加入顺序保留以保证 UI 稳定）。
-    public var selectedTags: [String] = []
-    public var selectedSort: CatalogSearchSort = .match
-    /// 评分下限。`nil` 表示不限制。允许 0...10。
-    public var ratingMin: Double? = nil
-    /// 起始年份（含），`nil` 表示不限。
-    public var yearMin: Int? = nil
-    /// 结束年份（含），`nil` 表示不限。
-    public var yearMax: Int? = nil
-    /// 始终包含 R18 —— 产品决定不向用户暴露这个开关。
-    private let includeNSFW: Bool = true
+    /// 当前 ref 声明的排序 / 筛选。界面只渲染这里有的东西。
+    public private(set) var spec: RefSearchSpec = .none
+    /// 选中的排序 id；`nil` 表示 ref 的默认排序。
+    public var selectedSort: String?
+    /// 筛选组 key → 选中的 option value。没选的组不出现。
+    public private(set) var selections: [String: String] = [:]
 
     public private(set) var isSearching: Bool = false
     public private(set) var results: [CatalogItem] = []
@@ -38,27 +33,13 @@ public final class SearchViewModel {
     private var debounceTask: Task<Void, Never>?
     private var nextOffset: Int = 0
     private var lastSubmittedKeyword: String = ""
-    private var lastSubmittedSort: CatalogSearchSort = .match
-    private var lastSubmittedFilter: CatalogSearchFilter = .default
+    private var lastSubmittedQuery: RefSearchQuery = .empty
 
-    /// 兼容旧调用方：返回首个已选 tag。新代码请直接用 `selectedTags`。
-    public var selectedTag: String? {
-        get { selectedTags.first }
-        set {
-            if let value = newValue?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty {
-                selectedTags = [value]
-            } else {
-                selectedTags = []
-            }
-        }
-    }
+    /// 是否有任何筛选生效（排序不算）。
+    public var hasActiveFilter: Bool { !selections.isEmpty }
 
-    /// 是否有任何高级筛选生效（用于 UI 上显示"已启用筛选"提示）。
-    public var hasActiveAdvancedFilter: Bool {
-        !selectedTags.isEmpty
-            || ratingMin != nil
-            || yearMin != nil
-            || yearMax != nil
+    private var query: RefSearchQuery {
+        RefSearchQuery(sort: selectedSort, filters: selections)
     }
 
     public init(
@@ -84,8 +65,8 @@ public final class SearchViewModel {
 
     public func submit() async {
         let keyword = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let filter = makeFilter()
-        guard !keyword.isEmpty || !filter.tags.isEmpty || filter != .default else { return }
+        let query = self.query
+        guard !keyword.isEmpty || query.hasFilters else { return }
         debounceTask?.cancel()
         currentTask?.cancel()
         results = []
@@ -95,16 +76,14 @@ public final class SearchViewModel {
         hasSearched = true
         nextOffset = 0
         lastSubmittedKeyword = keyword
-        lastSubmittedSort = selectedSort
-        lastSubmittedFilter = filter
+        lastSubmittedQuery = query
 
         currentTask = Task { [weak self] in
             guard let self else { return }
             do {
                 let page = try await api.searchPage(
                     keyword: keyword,
-                    sort: selectedSort,
-                    filter: filter,
+                    query: query,
                     limit: Self.pageSize,
                     offset: 0
                 )
@@ -134,17 +113,15 @@ public final class SearchViewModel {
         guard item.id == results.last?.id else { return }
 
         let keyword = lastSubmittedKeyword
-        let filter = lastSubmittedFilter
-        guard !keyword.isEmpty || !filter.tags.isEmpty || filter != .default else { return }
-        let sort = lastSubmittedSort
+        let query = lastSubmittedQuery
+        guard !keyword.isEmpty || query.hasFilters else { return }
         let offset = nextOffset
         isLoadingMore = true
 
         do {
             let page = try await api.searchPage(
                 keyword: keyword,
-                sort: sort,
-                filter: filter,
+                query: query,
                 limit: Self.pageSize,
                 offset: offset
             )
@@ -167,59 +144,52 @@ public final class SearchViewModel {
         isLoadingMore = false
     }
 
-    /// 兼容旧调用方（DetailView 点 tag 跳搜索页）：把已选 tag 重置为这一个。
+    /// 详情页点了一个标签：ref 没有「按标签筛选」这回事，就把标签当关键词搜。
     public func applyTag(_ tag: String) {
         let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        selectedTags = [trimmed]
-        text = ""
+        text = trimmed
+        selections = [:]
         debounceTask?.cancel()
     }
 
-    /// 把一个 tag 加入多选列表。已存在时不变。
-    public func addTag(_ tag: String) {
-        let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !selectedTags.contains(trimmed) else { return }
-        selectedTags.append(trimmed)
-    }
-
-    /// 从已选 tag 列表里移除一个；如已有搜索上下文则立即重搜。
-    public func removeTag(_ tag: String) {
-        let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
-        let beforeCount = selectedTags.count
-        selectedTags.removeAll { $0 == trimmed }
-        guard selectedTags.count != beforeCount else { return }
-        advancedFilterChanged()
-    }
-
-    public func clearTag() {
-        let hadTag = !selectedTags.isEmpty
-        selectedTags = []
-        if hadTag {
-            advancedFilterChanged()
+    /// 向当前 ref 要它声明的排序 / 筛选，并丢掉新声明里已经不存在的旧选择（换 ref 之后）。
+    public func refreshSpec() async {
+        let latest = await api.searchSpec()
+        guard latest != spec else { return }
+        spec = latest
+        selections = selections.filter { key, value in
+            latest.filters.first { $0.key == key }?.options.contains { $0.value == value } ?? false
+        }
+        if let selectedSort, !latest.sorts.contains(where: { $0.id == selectedSort }) {
+            self.selectedSort = nil
         }
     }
 
-    /// 一键重置所有高级筛选项。
-    public func resetAdvancedFilter() {
-        let hadAny = hasActiveAdvancedFilter
-        selectedTags = []
-        ratingMin = nil
-        yearMin = nil
-        yearMax = nil
-        if hadAny {
-            advancedFilterChanged()
+    /// 选中（或用 `nil` 清除）一个筛选组的值；已经有搜索上下文时立即重搜。
+    public func select(_ value: String?, forFilter key: String) {
+        if let value {
+            guard selections[key] != value else { return }
+            selections[key] = value
+        } else {
+            guard selections[key] != nil else { return }
+            selections[key] = nil
         }
+        filterChanged()
     }
 
-    /// 高级筛选项（tag / rating / year / nsfw）变化时由 View 调用。
-    /// 已经有过一次有效搜索时立即重搜，否则按现有 keyword/tag 触发首次搜索（若条件足够）。
-    public func advancedFilterChanged() {
-        let hasContext = !lastSubmittedKeyword.isEmpty
-            || !lastSubmittedFilter.tags.isEmpty
-            || lastSubmittedFilter != .default
+    /// 一键清掉所有筛选（排序保留）。
+    public func resetFilters() {
+        guard hasActiveFilter else { return }
+        selections = [:]
+        filterChanged()
+    }
+
+    /// 筛选变化后：已经有过一次有效搜索，或当前条件足够搜了，就立即重搜。
+    public func filterChanged() {
+        let hasContext = !lastSubmittedKeyword.isEmpty || lastSubmittedQuery.hasFilters
         let canSubmitNow = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            || hasActiveAdvancedFilter
+            || hasActiveFilter
         guard hasContext || canSubmitNow else { return }
         scheduleImmediateSubmit()
     }
@@ -252,8 +222,8 @@ public final class SearchViewModel {
     public func textChanged() {
         debounceTask?.cancel()
         let keyword = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if keyword.count < Self.liveSearchMinLength && !hasActiveAdvancedFilter {
-            // 关键字过短且没有任何 advanced filter 兜底：取消挂起，不触发请求。
+        if keyword.count < Self.liveSearchMinLength && !hasActiveFilter {
+            // 关键字过短且没有任何筛选兜底：取消挂起，不触发请求。
             return
         }
         let delay = debounceMilliseconds
@@ -270,9 +240,7 @@ public final class SearchViewModel {
 
     /// 排序变化时由 View 调用。如果已经有已生效的搜索上下文，立即重搜；否则什么都不做。
     public func sortChanged() {
-        let hasContext = !lastSubmittedKeyword.isEmpty
-            || !lastSubmittedFilter.tags.isEmpty
-            || lastSubmittedFilter != .default
+        let hasContext = !lastSubmittedKeyword.isEmpty || lastSubmittedQuery.hasFilters
         guard hasContext else { return }
         scheduleImmediateSubmit()
     }
@@ -290,16 +258,5 @@ public final class SearchViewModel {
     public func waitForIdle() async {
         await debounceTask?.value
         await currentTask?.value
-    }
-
-    /// 把 ViewModel 的 advanced state 拼成 `CatalogSearchFilter`。
-    private func makeFilter() -> CatalogSearchFilter {
-        var filter = CatalogSearchFilter(
-            tags: selectedTags,
-            ratingMin: ratingMin,
-            includeNSFW: includeNSFW
-        )
-        filter.setYearRange(min: yearMin, max: yearMax)
-        return filter
     }
 }

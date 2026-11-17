@@ -19,6 +19,13 @@ struct SearchViewModelTests {
         )
     }
 
+    private static let spec = RefSearchSpec(
+        sorts: [.init(id: "hot", label: "热度"), .init(id: "new", label: "最新")],
+        filters: [
+            .init(key: "year", label: "年份", options: [.init(value: "2025"), .init(value: "2024")]),
+            .init(key: "area", label: "地区", options: [.init(value: "cn", label: "大陆")]),
+        ])
+
     @Test("submit searches Catalog with selected sort")
     func submitUsesSelectedSort() async {
         let api = HomeViewModelTests.FakeCatalogAPI()
@@ -27,7 +34,7 @@ struct SearchViewModelTests {
         ])
         let vm = SearchViewModel(api: api)
         vm.text = "芙莉莲"
-        vm.selectedSort = .score
+        vm.selectedSort = "new"
 
         await vm.submit()
 
@@ -36,7 +43,7 @@ struct SearchViewModelTests {
         #expect(vm.lastError == nil)
         #expect(api.keywordSearchCalls.count == 1)
         #expect(api.keywordSearchCalls[0].0 == "芙莉莲")
-        #expect(api.keywordSearchCalls[0].1 == .score)
+        #expect(api.keywordSearchCalls[0].1.sort == "new")
         #expect(api.keywordSearchCalls[0].2 == 0)
     }
 
@@ -86,18 +93,40 @@ struct SearchViewModelTests {
         #expect(history.recent.isEmpty)
     }
 
-    @Test("submit with only a tag does not write a keyword to history")
-    func submitWithOnlyTagSkipsHistory() async {
+    @Test("submit with only a filter searches with an empty keyword and writes no history")
+    func submitWithOnlyFilterSkipsHistory() async {
         let api = HomeViewModelTests.FakeCatalogAPI()
+        api.spec = Self.spec
         api.keywordSearchResult = .success([])
         let history = InMemorySearchHistoryStore()
         let vm = SearchViewModel(api: api, history: history)
-        vm.applyTag("校园")
-
-        await vm.submit()
+        await vm.refreshSpec()
+        vm.select("2025", forFilter: "year")
+        await vm.waitForIdle()
 
         #expect(api.keywordSearchCalls.count == 1)
+        #expect(api.keywordSearchCalls[0].0 == "")
+        #expect(api.keywordSearchCalls[0].1.filters == ["year": "2025"])
         #expect(history.recent.isEmpty)
+    }
+
+    @Test("applyTag turns the tag into a keyword search and drops filters")
+    func applyTagBecomesKeyword() async {
+        let api = HomeViewModelTests.FakeCatalogAPI()
+        api.spec = Self.spec
+        api.keywordSearchResult = .success([])
+        let vm = SearchViewModel(api: api, debounceMilliseconds: 5)
+        await vm.refreshSpec()
+        vm.select("2024", forFilter: "year")
+        await vm.waitForIdle()
+
+        vm.applyTag("  悬疑  ")
+        await vm.submit()
+
+        #expect(vm.text == "悬疑")
+        #expect(vm.selections.isEmpty)
+        #expect(api.keywordSearchCalls.last?.0 == "悬疑")
+        #expect(api.keywordSearchCalls.last?.1.hasFilters == false)
     }
 
     @Test("textChanged debounces and triggers submit when keyword crosses min length")
@@ -156,12 +185,12 @@ struct SearchViewModelTests {
         await vm.submit()
         #expect(api.keywordSearchCalls.count == 1)
 
-        vm.selectedSort = .heat
+        vm.selectedSort = "new"
         vm.sortChanged()
         await vm.waitForIdle()
 
         #expect(api.keywordSearchCalls.count == 2)
-        #expect(api.keywordSearchCalls[1].1 == .heat)
+        #expect(api.keywordSearchCalls[1].1.sort == "new")
     }
 
     @Test("sortChanged is a no-op before the first search")
@@ -170,7 +199,7 @@ struct SearchViewModelTests {
         api.keywordSearchResult = .success([])
         let vm = SearchViewModel(api: api, debounceMilliseconds: 5)
 
-        vm.selectedSort = .heat
+        vm.selectedSort = "new"
         vm.sortChanged()
         await vm.waitForIdle()
 
@@ -239,100 +268,131 @@ struct SearchViewModelTests {
         #expect(emptyStore.recent == ["旧"])
     }
 
-    @Test("submit forwards advanced filter into the request")
-    func submitForwardsAdvancedFilter() async {
+    @Test("a ref without declared search options shows none and sends an empty query")
+    func noSpecMeansKeywordOnly() async {
         let api = HomeViewModelTests.FakeCatalogAPI()
         api.keywordSearchResult = .success([])
         let vm = SearchViewModel(api: api)
+        await vm.refreshSpec()
         vm.text = "海贼王"
-        vm.selectedTags = ["校园", "原创"]
-        vm.ratingMin = 8.0
-        vm.yearMin = 2020
-        vm.yearMax = 2023
 
         await vm.submit()
 
-        #expect(api.keywordSearchFilters.count == 1)
-        let f = api.keywordSearchFilters[0]
-        #expect(f.tags == ["校园", "原创"])
-        #expect(f.ratingMin == 8.0)
-        #expect(f.airDateAfter == "2020-01-01")
-        #expect(f.airDateBefore == "2024-01-01")
-        #expect(f.includeNSFW == true)
+        #expect(vm.spec.isEmpty)
+        #expect(api.keywordSearchCalls[0].1 == .empty)
     }
 
-    @Test("addTag dedupes and preserves insertion order")
-    func addTagDedupes() {
+    @Test("submit forwards the selected sort and filters to the ref")
+    func submitForwardsQuery() async {
         let api = HomeViewModelTests.FakeCatalogAPI()
+        api.spec = Self.spec
+        api.keywordSearchResult = .success([])
         let vm = SearchViewModel(api: api)
-        vm.addTag("校园")
-        vm.addTag("原创")
-        vm.addTag("  校园  ")
-        vm.addTag("")
-
-        #expect(vm.selectedTags == ["校园", "原创"])
-    }
-
-    @Test("removeTag triggers an immediate research when there is context")
-    func removeTagResearches() async {
-        let api = HomeViewModelTests.FakeCatalogAPI()
-        api.keywordSearchResult = .success([])
-        let vm = SearchViewModel(api: api, debounceMilliseconds: 5)
+        await vm.refreshSpec()
         vm.text = "海贼王"
-        vm.selectedTags = ["校园", "原创"]
+        vm.selectedSort = "hot"
+        vm.select("cn", forFilter: "area")
+        await vm.waitForIdle()
+        api.keywordSearchResult = .success([])
+
         await vm.submit()
 
-        vm.removeTag("校园")
-        await vm.waitForIdle()
-
-        #expect(api.keywordSearchCalls.count == 2)
-        #expect(api.keywordSearchFilters.last?.tags == ["原创"])
+        let query = api.keywordSearchCalls.last?.1
+        #expect(query?.sort == "hot")
+        #expect(query?.filters == ["area": "cn"])
     }
 
-    @Test("resetAdvancedFilter clears all and re-runs the search")
-    func resetAdvancedFilterResearches() async {
+    @Test("select(nil) clears one group and re-runs the search")
+    func clearingAFilterResearches() async {
         let api = HomeViewModelTests.FakeCatalogAPI()
+        api.spec = Self.spec
         api.keywordSearchResult = .success([])
         let vm = SearchViewModel(api: api, debounceMilliseconds: 5)
+        await vm.refreshSpec()
         vm.text = "海贼王"
-        vm.selectedTags = ["校园"]
-        vm.ratingMin = 7.5
-        await vm.submit()
+        vm.select("2025", forFilter: "year")
+        vm.select("cn", forFilter: "area")
+        await vm.waitForIdle()
+        let before = api.keywordSearchCalls.count
 
-        vm.resetAdvancedFilter()
+        vm.select(nil, forFilter: "year")
         await vm.waitForIdle()
 
-        #expect(vm.selectedTags.isEmpty)
-        #expect(vm.ratingMin == nil)
-        #expect(api.keywordSearchCalls.count == 2)
-        #expect(api.keywordSearchFilters.last?.tags.isEmpty == true)
-        #expect(api.keywordSearchFilters.last?.includeNSFW == true)
+        #expect(api.keywordSearchCalls.count == before + 1)
+        #expect(api.keywordSearchCalls.last?.1.filters == ["area": "cn"])
     }
 
-    @Test("advancedFilterChanged is a no-op when no keyword/filter would be sent")
-    func advancedFilterChangedNoopWithoutContext() async {
+    @Test("resetFilters clears every group but keeps the sort")
+    func resetFiltersKeepsSort() async {
+        let api = HomeViewModelTests.FakeCatalogAPI()
+        api.spec = Self.spec
+        api.keywordSearchResult = .success([])
+        let vm = SearchViewModel(api: api, debounceMilliseconds: 5)
+        await vm.refreshSpec()
+        vm.text = "海贼王"
+        vm.selectedSort = "new"
+        vm.select("2025", forFilter: "year")
+        await vm.waitForIdle()
+
+        vm.resetFilters()
+        await vm.waitForIdle()
+
+        #expect(vm.selections.isEmpty)
+        #expect(vm.selectedSort == "new")
+        #expect(api.keywordSearchCalls.last?.1 == RefSearchQuery(sort: "new"))
+    }
+
+    @Test("filterChanged is a no-op when nothing would be sent")
+    func filterChangedNoopWithoutContext() async {
         let api = HomeViewModelTests.FakeCatalogAPI()
         let vm = SearchViewModel(api: api, debounceMilliseconds: 5)
 
-        vm.advancedFilterChanged()
+        vm.filterChanged()
         await vm.waitForIdle()
 
         #expect(api.keywordSearchCalls.isEmpty)
     }
 
-    @Test("textChanged triggers even when keyword is short but filter is active")
+    @Test("textChanged triggers even when the keyword is short but a filter is active")
     func textChangedRespectsActiveFilter() async {
         let api = HomeViewModelTests.FakeCatalogAPI()
+        api.spec = Self.spec
         api.keywordSearchResult = .success([])
         let vm = SearchViewModel(api: api, debounceMilliseconds: 5)
-        vm.selectedTags = ["校园"]
+        await vm.refreshSpec()
+        vm.select("2025", forFilter: "year")
+        await vm.waitForIdle()
+        let before = api.keywordSearchCalls.count
 
         vm.text = "X"
         vm.textChanged()
         await vm.waitForIdle()
 
-        #expect(api.keywordSearchCalls.count == 1)
-        #expect(api.keywordSearchFilters.last?.tags == ["校园"])
+        #expect(api.keywordSearchCalls.count == before + 1)
+        #expect(api.keywordSearchCalls.last?.1.filters == ["year": "2025"])
+    }
+
+    @Test("switching ref drops selections the new ref does not declare")
+    func refreshSpecPrunesStaleSelections() async {
+        let api = HomeViewModelTests.FakeCatalogAPI()
+        api.spec = Self.spec
+        let vm = SearchViewModel(api: api)
+        await vm.refreshSpec()
+        vm.selectedSort = "new"
+        vm.select("2025", forFilter: "year")
+        vm.select("cn", forFilter: "area")
+
+        api.spec = RefSearchSpec(
+            sorts: [.init(id: "rank")],
+            filters: [.init(key: "year", options: [.init(value: "2025")])])
+        await vm.refreshSpec()
+
+        #expect(vm.selections == ["year": "2025"], "地区这一组新 ref 没有，选择要丢掉；年份还在就保留")
+        #expect(vm.selectedSort == nil, "旧的排序 id 新 ref 不认识")
+
+        api.spec = .none
+        await vm.refreshSpec()
+        #expect(vm.selections.isEmpty)
     }
 
     /// 第一页会被补充通道插进额外条目，此时 `results.count` 不等于下一页的 offset。
@@ -365,8 +425,7 @@ struct SearchViewModelTests {
 
         func searchPage(
             keyword: String,
-            sort: CatalogSearchSort,
-            filter: CatalogSearchFilter,
+            query: RefSearchQuery,
             limit: Int,
             offset: Int
         ) async throws -> CatalogSearchPage {
@@ -381,11 +440,11 @@ struct SearchViewModelTests {
         }
 
         func search(
-            keyword: String, sort: CatalogSearchSort, filter: CatalogSearchFilter,
+            keyword: String, query: RefSearchQuery,
             limit: Int, offset: Int
         ) async throws -> [CatalogItem] {
             try await searchPage(
-                keyword: keyword, sort: sort, filter: filter, limit: limit, offset: offset
+                keyword: keyword, query: query, limit: limit, offset: offset
             ).items
         }
 
@@ -401,15 +460,5 @@ struct SearchViewModelTests {
         func fetchReviews(subjectID: Int) async throws -> [CatalogSubjectReview] { [] }
         func fetchEpisodes(subjectID: Int) async throws -> [CatalogEpisode] { [] }
         func fetchEpisodeComments(episodeID: Int) async throws -> [CatalogEpisodeComment] { [] }
-    }
-
-    @Test("selectedTag setter mirrors a single-tag selectedTags")
-    func selectedTagBackCompat() {
-        let api = HomeViewModelTests.FakeCatalogAPI()
-        let vm = SearchViewModel(api: api)
-        vm.selectedTag = "校园"
-        #expect(vm.selectedTags == ["校园"])
-        vm.selectedTag = nil
-        #expect(vm.selectedTags.isEmpty)
     }
 }

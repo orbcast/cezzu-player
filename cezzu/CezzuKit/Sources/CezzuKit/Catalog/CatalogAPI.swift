@@ -24,29 +24,22 @@ public protocol CatalogAPIClientProtocol: Sendable {
     func trending(limit: Int, offset: Int) async throws -> [CatalogItem]
     /// 按 tag 浏览（ref 的 `browse()`）。
     func search(tag: String, limit: Int, offset: Int) async throws -> [CatalogItem]
-    /// 按关键字搜索，并支持排序与筛选。ref 的搜索不分页，也不支持服务端排序 / 筛选。
+    /// 按关键字搜索。`query` 是用户在 ref 声明的排序 / 筛选里的选择；关键字可以为空（只按筛选找）。
+    /// ref 的搜索不分页，这里在客户端切页。
     func search(
         keyword: String,
-        sort: CatalogSearchSort,
-        filter: CatalogSearchFilter,
-        limit: Int,
-        offset: Int
-    ) async throws -> [CatalogItem]
-    /// 兼容旧调用方的简易关键字搜索（单 tag）。
-    func search(
-        keyword: String,
-        sort: CatalogSearchSort,
-        tag: String,
+        query: RefSearchQuery,
         limit: Int,
         offset: Int
     ) async throws -> [CatalogItem]
     func searchPage(
         keyword: String,
-        sort: CatalogSearchSort,
-        filter: CatalogSearchFilter,
+        query: RefSearchQuery,
         limit: Int,
         offset: Int
     ) async throws -> CatalogSearchPage
+    /// 当前 ref 声明的搜索排序 / 筛选；没声明或没有 ref 时为空。
+    func searchSpec() async -> RefSearchSpec
     func fetchSubject(subjectID: Int) async throws -> CatalogItem
     func fetchTags(subjectID: Int) async throws -> [CatalogTag]
     func fetchCharacters(subjectID: Int) async throws -> [CatalogRelatedCharacter]
@@ -60,30 +53,17 @@ public protocol CatalogAPIClientProtocol: Sendable {
 extension CatalogAPIClientProtocol {
     public func homeSections() async throws -> [CatalogHomeSection] { [] }
 
-    public func search(
-        keyword: String,
-        sort: CatalogSearchSort,
-        tag: String,
-        limit: Int,
-        offset: Int
-    ) async throws -> [CatalogItem] {
-        let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
-        return try await search(
-            keyword: keyword, sort: sort,
-            filter: CatalogSearchFilter(tags: trimmed.isEmpty ? [] : [trimmed]),
-            limit: limit, offset: offset)
-    }
-
     public func searchPage(
         keyword: String,
-        sort: CatalogSearchSort,
-        filter: CatalogSearchFilter,
+        query: RefSearchQuery,
         limit: Int,
         offset: Int
     ) async throws -> CatalogSearchPage {
-        let items = try await search(keyword: keyword, sort: sort, filter: filter, limit: limit, offset: offset)
+        let items = try await search(keyword: keyword, query: query, limit: limit, offset: offset)
         return CatalogSearchPage(items: items, nextOffset: offset + items.count, hasMore: items.count == limit)
     }
+
+    public func searchSpec() async -> RefSearchSpec { .none }
 }
 
 public enum CatalogAPIError: Error, Hashable, Sendable {
@@ -182,13 +162,17 @@ public actor RefCatalogAPI: CatalogAPIClientProtocol {
     }
 
     public func search(
-        keyword: String, sort: CatalogSearchSort, filter: CatalogSearchFilter, limit: Int, offset: Int
+        keyword: String, query: RefSearchQuery, limit: Int, offset: Int
     ) async throws -> [CatalogItem] {
         let ref = try await currentRef()
         do {
-            let items = map(try await ref.search(keyword), ref: ref)
+            let items = map(try await ref.search(keyword, query: query), ref: ref)
             return page(items, limit: limit, offset: offset)
         } catch { throw CatalogAPIError.wrap(error) }
+    }
+
+    public func searchSpec() async -> RefSearchSpec {
+        await store.current?.manifest.search ?? .none
     }
 
     // MARK: - 详情

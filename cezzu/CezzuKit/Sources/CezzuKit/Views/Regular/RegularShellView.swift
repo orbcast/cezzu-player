@@ -52,6 +52,7 @@ struct RegularShellView: View {
                 bannerStore: HomeBannerStore(refID: newID)
             )
             Task { await homeModel.loadInitialIfNeeded() }
+            Task { await searchModel.refreshSpec() }
         }
     }
 

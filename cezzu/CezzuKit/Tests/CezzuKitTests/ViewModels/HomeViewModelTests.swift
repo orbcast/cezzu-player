@@ -23,8 +23,9 @@ struct HomeViewModelTests {
         private(set) var searchCalls: [String] = []
         private(set) var searchOffsets: [Int] = []
         private(set) var searchLimits: [Int] = []
-        private(set) var keywordSearchCalls: [(String, CatalogSearchSort, Int)] = []
-        private(set) var keywordSearchFilters: [CatalogSearchFilter] = []
+        private(set) var keywordSearchCalls: [(String, RefSearchQuery, Int)] = []
+        /// 当前 ref 声明的搜索排序 / 筛选。
+        var spec: RefSearchSpec = .none
 
         func homeSections() async throws -> [CatalogHomeSection] {
             let result = recordLayout()
@@ -50,12 +51,11 @@ struct HomeViewModelTests {
 
         func search(
             keyword: String,
-            sort: CatalogSearchSort,
-            filter: CatalogSearchFilter,
+            query: RefSearchQuery,
             limit: Int,
             offset: Int
         ) async throws -> [CatalogItem] {
-            switch recordKeywordSearch(keyword: keyword, sort: sort, filter: filter, offset: offset) {
+            switch recordKeywordSearch(keyword: keyword, query: query, offset: offset) {
             case .success(let items): return items
             case .failure(let error): throw error
             }
@@ -91,20 +91,20 @@ struct HomeViewModelTests {
 
         private func recordKeywordSearch(
             keyword: String,
-            sort: CatalogSearchSort,
-            filter: CatalogSearchFilter,
+            query: RefSearchQuery,
             offset: Int
         ) -> Result<[CatalogItem], CatalogAPIError> {
             lock.lock()
             defer { lock.unlock() }
-            keywordSearchCalls.append((keyword, sort, offset))
-            keywordSearchFilters.append(filter)
+            keywordSearchCalls.append((keyword, query, offset))
             return keywordSearchResult
         }
 
         /// 详情接口返回的简介；未登记的 id 返回空简介，`failingSubjectIDs` 里的直接抛错。
         var subjectSummaries: [Int: String] = [:]
         var failingSubjectIDs: Set<Int> = []
+
+        func searchSpec() async -> RefSearchSpec { spec }
 
         func fetchSubject(subjectID: Int) async throws -> CatalogItem {
             if failingSubjectIDs.contains(subjectID) { throw CatalogAPIError.unknownSubject }

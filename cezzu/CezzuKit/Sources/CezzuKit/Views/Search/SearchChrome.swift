@@ -45,111 +45,22 @@ struct SearchMetrics {
     )
 }
 
-// MARK: - 纯数据：筛选档位与文案
-
-/// 年份快捷档位。
-struct SearchYearPreset: Identifiable, Equatable {
-    let id: String
-    let title: String
-    let min: Int?
-    let max: Int?
-
-    func matches(min current: Int?, max currentMax: Int?) -> Bool {
-        current == min && currentMax == max
-    }
-
-    static func presets(currentYear: Int) -> [SearchYearPreset] {
-        [
-            SearchYearPreset(id: "any", title: "不限", min: nil, max: nil),
-            SearchYearPreset(id: "thisYear", title: "今年", min: currentYear, max: currentYear),
-            SearchYearPreset(id: "last3", title: "近 3 年", min: currentYear - 2, max: currentYear),
-            SearchYearPreset(id: "last5", title: "近 5 年", min: currentYear - 4, max: currentYear),
-            SearchYearPreset(id: "2020s", title: "2020s", min: 2020, max: 2029),
-            SearchYearPreset(id: "2010s", title: "2010s", min: 2010, max: 2019),
-            SearchYearPreset(id: "2000s", title: "2000s", min: 2000, max: 2009),
-            SearchYearPreset(id: "90s", title: "90 年代", min: 1990, max: 1999),
-            SearchYearPreset(id: "older", title: "更早", min: nil, max: 1989),
-        ]
-    }
-
-    /// 当前年份区间对应的短标题；不落在任何档位上时按区间直述。
-    static func title(min: Int?, max: Int?, currentYear: Int) -> String {
-        if let hit = presets(currentYear: currentYear).first(where: { $0.matches(min: min, max: max) }) {
-            return hit.title
-        }
-        switch (min, max) {
-        case let (lower?, upper?):
-            return lower == upper ? "\(lower)" : "\(lower)–\(upper)"
-        case let (lower?, nil):
-            return "\(lower) 年起"
-        case let (nil, upper?):
-            return "\(upper) 年前"
-        case (nil, nil):
-            return "不限"
-        }
-    }
-}
-
-/// 评分下限档位。手机上拖 slider 对不准，改成几个够用的整档。
-enum SearchRatingPreset {
-    static let thresholds: [Double] = [6, 7, 7.5, 8, 8.5, 9]
-
-    static func title(for value: Double?) -> String {
-        guard let value, value > 0 else { return "不限" }
-        return String(format: "≥ %.1f", value)
-    }
-}
-
-/// 常用标签。Catalog 的 tag 要求原样匹配，凭空敲很难中，先给一排现成的。
-enum SearchTagSuggestion {
-    static let popular: [String] = [
-        "科幻", "奇幻", "恋爱", "日常", "治愈", "热血",
-        "校园", "悬疑", "搞笑", "催泪", "运动", "音乐",
-        "机战", "美食", "剧场版",
-    ]
-}
+// MARK: - 纯数据：筛选摘要与文案
 
 /// 已启用筛选的摘要 chip（不含排序 —— 排序永远有值，不算"筛选"）。
 struct SearchActiveFilter: Identifiable, Equatable {
-    enum Kind: Equatable {
-        case tag(String)
-        case rating
-        case year
-    }
-
+    /// 筛选组 key，摘掉它就清掉这一组。
     let id: String
     let title: String
-    let kind: Kind
 
-    static func chips(
-        tags: [String],
-        ratingMin: Double?,
-        yearMin: Int?,
-        yearMax: Int?,
-        currentYear: Int
-    ) -> [SearchActiveFilter] {
-        var chips = tags.map {
-            SearchActiveFilter(id: "tag:\($0)", title: $0, kind: .tag($0))
+    /// 按 ref 声明的顺序列出选中的筛选：`年份 · 2025`。选中的值已不在声明里时不显示。
+    static func chips(spec: RefSearchSpec, selections: [String: String]) -> [SearchActiveFilter] {
+        spec.filters.compactMap { facet in
+            guard let value = selections[facet.key],
+                let option = facet.options.first(where: { $0.value == value })
+            else { return nil }
+            return SearchActiveFilter(id: facet.key, title: "\(facet.label) · \(option.label)")
         }
-        if let ratingMin, ratingMin > 0 {
-            chips.append(
-                SearchActiveFilter(
-                    id: "rating",
-                    title: SearchRatingPreset.title(for: ratingMin),
-                    kind: .rating
-                )
-            )
-        }
-        if yearMin != nil || yearMax != nil {
-            chips.append(
-                SearchActiveFilter(
-                    id: "year",
-                    title: SearchYearPreset.title(min: yearMin, max: yearMax, currentYear: currentYear),
-                    kind: .year
-                )
-            )
-        }
-        return chips
     }
 }
 
@@ -163,21 +74,15 @@ enum SearchResultsSummary {
     }
 }
 
-/// 筛选条上可展开的那几个面。同一时刻只展开一个。
-enum SearchFacet: String, Identifiable, CaseIterable {
+/// 筛选条上可展开的面。同一时刻只展开一个。
+enum SearchFacet: Hashable {
     case sort
-    case year
-    case rating
-    case tag
-
-    var id: String { rawValue }
+    case filter(key: String)
 
     var systemImage: String {
         switch self {
         case .sort: return "arrow.up.arrow.down"
-        case .year: return "calendar"
-        case .rating: return "star"
-        case .tag: return "number"
+        case .filter: return "line.3.horizontal.decrease"
         }
     }
 }
