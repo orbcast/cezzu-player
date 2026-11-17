@@ -74,6 +74,9 @@ public final class HomeViewModel {
     /// subject id → 封面色板。
     public private(set) var bannerPalettes: [Int: CoverColorPalette] = [:]
 
+    /// subject id → 详情接口里的完整简介（首页条目通常不带 summary，Hero 要和详情页同一份文案）。
+    public private(set) var bannerSummaries: [Int: String] = [:]
+
     /// 当前页对应色板（无数据时用 fallback）。
     public var activeBannerPalette: CoverColorPalette {
         guard bannerItems.indices.contains(activeBannerIndex) else {
@@ -88,6 +91,7 @@ public final class HomeViewModel {
     private let paletteStore: BannerPaletteStore
     /// 正在取色的 subject，避免重复下载。
     private var paletteTasks: Set<Int> = []
+    private var summaryTasks: Set<Int> = []
 
     public init(
         api: CatalogAPIClientProtocol,
@@ -172,6 +176,7 @@ public final class HomeViewModel {
                     items: entry.items, hasLoaded: true)
             }
             hasLoadedAny = !sections.isEmpty
+            Task { await prefetchBannerSummaries() }
             if let first = sections.first {
                 syncBanner(from: first.items)
             } else {
@@ -201,6 +206,30 @@ public final class HomeViewModel {
         activeBannerIndex = min(max(0, index), bannerItems.count - 1)
         let item = bannerItems[activeBannerIndex]
         Task { await loadPaletteIfNeeded(for: item) }
+        Task { await loadSummaryIfNeeded(for: item) }
+    }
+
+    /// 为 Banner 条目取详情页的简介（条目自带 summary 或已取过则跳过）。失败不缓存，下次切到时再试。
+    public func loadSummaryIfNeeded(for item: CatalogItem) async {
+        guard bannerSummaries[item.id] == nil, !summaryTasks.contains(item.id) else { return }
+        guard item.summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        summaryTasks.insert(item.id)
+        defer { summaryTasks.remove(item.id) }
+
+        guard let detail = try? await api.fetchSubject(subjectID: item.id) else { return }
+        let summary = detail.summary.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !summary.isEmpty else { return }
+        bannerSummaries[item.id] = summary
+    }
+
+    /// 并发预取全部 Banner 的简介，不阻塞首屏。
+    public func prefetchBannerSummaries() async {
+        let items = bannerItems
+        await withTaskGroup(of: Void.self) { group in
+            for item in items {
+                group.addTask { await self.loadSummaryIfNeeded(for: item) }
+            }
+        }
     }
 
     /// 为 Banner 条目取封面色（已有则跳过）。

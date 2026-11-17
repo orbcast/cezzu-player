@@ -15,7 +15,7 @@ enum RegularHomeHeroLayout {
     /// 窗口比这还矮时 hero 就溢出视口、靠滚动看 —— 也绝不能让内容缩到顶栏底下去。
     static let minHeight: CGFloat = 540
     static let maxHeight: CGFloat = 1000
-    /// 低于这个高度走精简版：收起原名和简介，缩略图和标题也降一档。
+    /// 低于这个高度走精简版：收起原名，缩略图和标题也降一档，简介保留。
     static let compactThreshold: CGFloat = 640
     static let horizontalPadding: CGFloat = 56
     /// 海报与右侧信息栏之间的间距。两者是紧挨着的一组。
@@ -152,6 +152,8 @@ struct RegularHomeHeroBanner: View {
     let items: [CatalogItem]
     let activeIndex: Int
     let palettes: [Int: CoverColorPalette]
+    /// 详情接口取回的完整简介；没取到时回落到条目自带的文案。
+    var summaries: [Int: String] = [:]
     var viewportHeight: CGFloat
     var onChangeIndex: (Int) -> Void
     var onTapItem: (CatalogItem) -> Void
@@ -428,7 +430,7 @@ struct RegularHomeHeroBanner: View {
 
     @ViewBuilder
     private func infoColumn(_ item: CatalogItem) -> some View {
-        // 窗口矮下来时先丢可选信息（原名、简介），把间距也收紧 ——
+        // 窗口矮下来时先丢可选信息（原名），把间距也收紧 ——
         // 挤不下的时候宁可少说两句，也不能让整栏顶到悬浮顶栏底下去。
         let compact = RegularHomeHeroLayout.isCompact(heroHeight: totalHeight)
         VStack(alignment: .leading, spacing: 0) {
@@ -457,10 +459,8 @@ struct RegularHomeHeroBanner: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            if !compact {
-                summaryQuote(for: item)
-                    .padding(.top, 22)
-            }
+            summaryQuote(for: item)
+                .padding(.top, compact ? 14 : 22)
 
             factChips(for: item)
                 .padding(.top, compact ? 14 : 22)
@@ -500,9 +500,11 @@ struct RegularHomeHeroBanner: View {
     /// 简介 —— 左侧一道竖线，读起来是"引文"而不是又一段正文。
     @ViewBuilder
     private func summaryQuote(for item: CatalogItem) -> some View {
-        let detail = HomeHeroBannerLayout.detailText(for: item)
-        // trending 不返回 summary，回落到 info 那串制作人员 —— 那不是"引文"，别装成引文。
-        let isSummary = !item.summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let fetched = summaries[item.id]
+        let detail = fetched ?? HomeHeroBannerLayout.detailText(for: item)
+        // 没拿到简介时回落到 info 那串制作人员 —— 那不是"引文"，别装成引文。
+        let isSummary = fetched != nil
+            || !item.summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         if !detail.isEmpty {
             HStack(alignment: .top, spacing: 14) {
                 Capsule()

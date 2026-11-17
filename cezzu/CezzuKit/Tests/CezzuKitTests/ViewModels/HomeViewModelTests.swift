@@ -102,9 +102,14 @@ struct HomeViewModelTests {
             return keywordSearchResult
         }
 
+        /// 详情接口返回的简介；未登记的 id 返回空简介，`failingSubjectIDs` 里的直接抛错。
+        var subjectSummaries: [Int: String] = [:]
+        var failingSubjectIDs: Set<Int> = []
+
         func fetchSubject(subjectID: Int) async throws -> CatalogItem {
-            CatalogItem(
-                id: subjectID, name: "", nameCn: "", summary: "", airDate: "",
+            if failingSubjectIDs.contains(subjectID) { throw CatalogAPIError.unknownSubject }
+            return CatalogItem(
+                id: subjectID, name: "", nameCn: "", summary: subjectSummaries[subjectID] ?? "", airDate: "",
                 rank: 0, ratingScore: 0, images: .empty, tags: []
             )
         }
@@ -160,6 +165,40 @@ struct HomeViewModelTests {
         #expect(vm.sections[0].items.count == 6)
         #expect(vm.hasLoadedLayout && vm.layoutError == nil)
         #expect(api.trendingCalls == 0 && api.searchCalls.isEmpty, "不再有固定的热门 / 标签请求")
+    }
+
+    @Test("banner summaries come from the detail endpoint, the same text the detail page shows")
+    func bannerSummariesComeFromDetail() async {
+        let (store, url) = tempStore()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let api = FakeCatalogAPI()
+        api.layoutResult = .success([section("热播", ids: 1...3)])
+        api.subjectSummaries = [1: "  第一条简介 ", 2: "第二条简介"]
+        api.failingSubjectIDs = [3]
+        let vm = HomeViewModel(api: api, bannerStore: store)
+
+        await vm.loadInitialIfNeeded()
+        await vm.prefetchBannerSummaries()
+
+        #expect(vm.bannerSummaries[1] == "第一条简介", "首尾空白要裁掉")
+        #expect(vm.bannerSummaries[2] == "第二条简介")
+        #expect(vm.bannerSummaries[3] == nil, "取失败就是没有，不编一个")
+    }
+
+    @Test("a banner item that already carries a summary is not fetched again")
+    func summaryAlreadyPresentSkipsFetch() async {
+        let (store, url) = tempStore()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let api = FakeCatalogAPI()
+        api.subjectSummaries = [7: "详情里的"]
+        let vm = HomeViewModel(api: api, bannerStore: store)
+        let item = CatalogItem(
+            id: 7, name: "n", nameCn: "n", summary: "自带的", airDate: "",
+            rank: 0, ratingScore: 0, images: .empty, tags: [])
+
+        await vm.loadSummaryIfNeeded(for: item)
+
+        #expect(vm.bannerSummaries[7] == nil)
     }
 
     @Test("banner is the first non-empty section and is cached")

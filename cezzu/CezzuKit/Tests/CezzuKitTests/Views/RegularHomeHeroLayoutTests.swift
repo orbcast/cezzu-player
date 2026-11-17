@@ -181,10 +181,10 @@ struct RegularHomeHeroLayoutTests {
 
     @Test("the height floor leaves room for the top bar plus the compact column")
     func heightFloorClearsTheTopBar() {
-        // 下限必须容得下顶栏让位 + 精简版内容，否则内容会被顶栏盖住。
+        // 下限必须容得下顶栏让位 + 精简版内容（含两行简介），否则内容会被顶栏盖住。
         #expect(
             RegularHomeHeroLayout.minHeight
-                > RegularShellLayout.contentTopInset(for: .belowSafeArea) + 380
+                > RegularShellLayout.contentTopInset(for: .belowSafeArea) + 440
         )
         #expect(RegularHomeHeroLayout.minHeight < RegularHomeHeroLayout.compactThreshold)
     }

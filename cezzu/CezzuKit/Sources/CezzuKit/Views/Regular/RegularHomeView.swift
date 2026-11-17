@@ -66,6 +66,7 @@ public struct RegularHomeView: View {
                                 items: model.bannerItems,
                                 activeIndex: model.activeBannerIndex,
                                 palettes: model.bannerPalettes,
+                                summaries: model.bannerSummaries,
                                 viewportHeight: geo.size.height,
                                 onChangeIndex: { index in
                                     dominantBannerIndex = index
