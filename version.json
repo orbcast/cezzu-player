@@ -1,0 +1,10 @@
+{
+  "ios": {
+    "version": "0.1.5",
+    "build": 17
+  },
+  "macos": {
+    "version": "0.1.5",
+    "build": 17
+  }
+}
