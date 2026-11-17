@@ -154,7 +154,9 @@ struct RegularShellView: View {
             }
         case .settings:
             underTopBar {
-                SettingsView()
+                // 设置页自带一层 NavigationStack：它的二级页（NavigationLink）压在这一层里，
+                // 换代时整棵一起拆掉。压在外层 path 栈上的话，换代拆不掉，顶栏点了没反应。
+                NavigationStack { SettingsView() }
             }
             // 换代 = 把设置页连同它压上去的二级页一起拆掉，见 `RegularShellPages`。
             .id(pages.settingsGeneration)
