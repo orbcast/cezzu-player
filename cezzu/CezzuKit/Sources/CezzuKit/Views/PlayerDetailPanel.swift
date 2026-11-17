@@ -124,7 +124,7 @@ final class PlayerDetailModel {
         hasLoadedExtraSources = true
 
         guard let item = currentRequest.item else {
-            sourceSearchFailed = "当前播放入口没有番剧条目，仅可切换当前源的线路和剧集。"
+            sourceSearchFailed = "当前播放入口没有剧集条目，仅可切换当前源的线路和剧集。"
             return
         }
 

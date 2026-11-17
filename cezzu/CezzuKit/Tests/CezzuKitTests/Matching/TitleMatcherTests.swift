@@ -18,7 +18,7 @@ struct TitleMatcherTests {
         #expect(TitleMatcher.season(of: "药屋少女的呢喃 第三季") == 3)
         #expect(TitleMatcher.season(of: "药屋少女的呢喃 第2季") == 2)
         #expect(TitleMatcher.season(of: "凡人修仙传 第十二季") == 12)
-        #expect(TitleMatcher.season(of: "某番 第二期") == 2)
+        #expect(TitleMatcher.season(of: "某剧 第二期") == 2)
         #expect(TitleMatcher.season(of: "葬送的芙莉莲 II") == 2)
         #expect(TitleMatcher.season(of: "葬送的芙莉莲Ⅲ") == 3)
         #expect(TitleMatcher.season(of: "Frieren Season 2") == 2)
@@ -219,7 +219,7 @@ struct TitleMatcherTests {
         #expect(TitleMatcher.score(title: "某〇片名", keyword: "某A片名") == 3)
     }
 
-    /// 掩码只顶一个字，不是通配整段 —— 否则不同的番会互相错配。
+    /// 掩码只顶一个字，不是通配整段 —— 否则不同的剧会互相错配。
     @Test("a mask stands for exactly one character")
     func maskCoversOneCharacterOnly() {
         #expect(TitleMatcher.score(title: "某AB片名", keyword: "某〇片名") == 0)

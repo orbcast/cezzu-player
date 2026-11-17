@@ -1,6 +1,6 @@
 import Foundation
 
-/// 首页沉浸式 Banner 的磁盘缓存：固定取「热门番组」前 N 条。
+/// 首页沉浸式 Banner 的磁盘缓存：固定取「热门剧集」前 N 条。
 ///
 /// 仅当前 N 条的 **subject id 序列** 变化时才写盘；元数据微调不触发更新。
 public final class HomeBannerStore: @unchecked Sendable {

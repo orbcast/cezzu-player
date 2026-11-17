@@ -630,7 +630,7 @@ struct RegularHomeHeroBanner: View {
                     Circle()
                         .fill(.red)
                         .frame(width: 6, height: 6)
-                    Text("TOP \(items.count) 热门番组快速点播")
+                    Text("TOP \(items.count) 热门剧集快速点播")
                         .font(.system(size: 11, weight: .semibold))
                         .tracking(1.6)
                         .foregroundStyle(.white.opacity(0.55))

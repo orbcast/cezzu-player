@@ -28,7 +28,7 @@ public final class TagBrowseViewModel {
     public init(api: CatalogAPIClientProtocol, tag: String) {
         self.api = api
         self.tag = tag
-        self.title = tag.isEmpty ? "热门番组" : tag
+        self.title = tag.isEmpty ? "热门剧集" : tag
     }
 
     public func loadInitialIfNeeded() async {

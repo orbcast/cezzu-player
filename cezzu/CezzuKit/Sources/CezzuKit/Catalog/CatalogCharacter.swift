@@ -1,6 +1,6 @@
 import Foundation
 
-/// 番剧角色 —— `/v0/subjects/{id}/characters` 返回的元素。
+/// 剧集角色 —— `/v0/subjects/{id}/characters` 返回的元素。
 public struct CatalogCharacter: Hashable, Sendable, Identifiable, Decodable {
     public let id: Int
     public let name: String

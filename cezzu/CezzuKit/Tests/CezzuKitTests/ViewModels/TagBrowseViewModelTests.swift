@@ -11,13 +11,13 @@ struct TagBrowseViewModelTests {
         HomeViewModelTests.makeItem(id: id, name: name)
     }
 
-    @Test("empty tag uses 热门番组 title and trending API")
+    @Test("empty tag uses 热门剧集 title and trending API")
     func trendingTitleAndFetch() async {
         let api = FakeAPI()
         api.trendingResult = .success([Self.makeItem(id: 1, name: "A"), Self.makeItem(id: 2, name: "B")])
         let vm = TagBrowseViewModel(api: api, tag: "")
 
-        #expect(vm.title == "热门番组")
+        #expect(vm.title == "热门剧集")
         await vm.loadInitialIfNeeded()
         await vm.waitForIdle()
 

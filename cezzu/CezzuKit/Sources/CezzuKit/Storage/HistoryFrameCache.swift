@@ -17,7 +17,7 @@ enum HistoryFrameCache {
             .appendingPathComponent(folderName, isDirectory: true)
     }
 
-    /// 按 identity（番剧标题或 detailURL）生成稳定文件名，覆盖写。
+    /// 按 identity（剧集标题或 detailURL）生成稳定文件名，覆盖写。
     static func save(image: CGImage, identity: String) throws -> URL {
         let fm = FileManager.default
         try fm.createDirectory(at: directoryURL, withIntermediateDirectories: true)

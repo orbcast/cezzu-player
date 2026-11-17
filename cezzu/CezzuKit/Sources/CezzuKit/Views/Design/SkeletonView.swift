@@ -34,7 +34,7 @@ struct ShimmerBlock: View {
     }
 }
 
-/// 一个番剧卡尺寸的骨架占位 —— 3:4 封面 + 两行标题。布局严格对齐 CatalogCard。
+/// 一个剧集卡尺寸的骨架占位 —— 3:4 封面 + 两行标题。布局严格对齐 CatalogCard。
 public struct CatalogCardSkeleton: View {
     public init() {}
 
@@ -56,7 +56,7 @@ public struct CatalogCardSkeleton: View {
     }
 }
 
-/// 番剧宫格的骨架版本。和 `CatalogGrid` 共用 `CatalogGridLayout.columns`，渲染 N 个占位卡。
+/// 剧集宫格的骨架版本。和 `CatalogGrid` 共用 `CatalogGridLayout.columns`，渲染 N 个占位卡。
 public struct CatalogSkeletonGrid: View {
     private let placeholderCount: Int
 

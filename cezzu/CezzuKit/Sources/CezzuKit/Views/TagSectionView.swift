@@ -34,7 +34,7 @@ public struct TagSectionView: View {
                     } else if model.items.isEmpty {
                         EmptyStateView(
                             systemImage: "sparkles",
-                            title: "暂无番剧",
+                            title: "暂无剧集",
                             message: "这个分区暂时没有内容。"
                         )
                         .padding(.top, 20)

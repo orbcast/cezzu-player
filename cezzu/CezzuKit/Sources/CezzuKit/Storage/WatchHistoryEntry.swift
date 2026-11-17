@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-/// 一条观看历史。每部番剧一条；进度更新时原地更新。
+/// 一条观看历史。每部剧集一条；进度更新时原地更新。
 @Model
 public final class WatchHistoryEntry {
     @Attribute(.unique) public var detailURLString: String

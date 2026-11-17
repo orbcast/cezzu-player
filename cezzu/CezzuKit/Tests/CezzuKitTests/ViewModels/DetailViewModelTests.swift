@@ -724,7 +724,7 @@ struct DetailViewModelTests {
         #expect(source.result.detailURL == aliasHit.detailURL)
     }
 
-    /// 站点上同一部番常有多条收录（不同版本 / 不同入口）。旧模型 `PlayableSource.id == ruleName`
+    /// 站点上同一部剧常有多条收录（不同版本 / 不同入口）。旧模型 `PlayableSource.id == ruleName`
     /// 让一条规则只能留一个，剩下的全被丢掉 —— 这是"能搜出多少影片"最大的一道闸门。
     @Test("one rule can contribute several sources")
     func loadKeepsMultipleEntriesFromOneRule() async {
@@ -868,7 +868,7 @@ struct DetailViewModelTests {
         let api = FakeCatalogAPI()
         api.searchResults = [
             CatalogItem(
-                id: 999, name: "别的番", nameCn: "别的番", summary: "", airDate: "",
+                id: 999, name: "别的剧", nameCn: "别的剧", summary: "", airDate: "",
                 rank: 0, ratingScore: 0, images: .empty, tags: []
             ),
             CatalogItem(
@@ -914,17 +914,17 @@ struct DetailViewModelTests {
         #expect(model.summary == "真简介")
     }
 
-    @Test("标题在 catalog 上找不到时维持原样，不能挂上别的番")
+    @Test("标题在 catalog 上找不到时维持原样，不能挂上别的剧")
     func historyEntryKeepsSynthesizedItemWhenTitleIsUnknown() async throws {
         let api = FakeCatalogAPI()
         api.searchResults = [
             CatalogItem(
-                id: 999, name: "毫不相干的番", nameCn: "毫不相干的番", summary: "", airDate: "",
+                id: 999, name: "毫不相干的剧", nameCn: "毫不相干的剧", summary: "", airDate: "",
                 rank: 0, ratingScore: 0, images: .empty, tags: []
             )
         ]
         let hint = HistoryResumeHint(
-            catalogTitle: "只有本地有的番",
+            catalogTitle: "只有本地有的剧",
             coverURLString: "file:///tmp/frame.jpg",
             detailURL: URL(string: "https://age.example/x")!,
             ruleName: "AGE",
@@ -945,7 +945,7 @@ struct DetailViewModelTests {
 
         #expect(model.item.id == 0)
         #expect(api.fetchSubjectCallCount == 0)
-        #expect(model.item.displayName == "只有本地有的番")
+        #expect(model.item.displayName == "只有本地有的剧")
     }
 
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-/// 单个搜索结果（一部番剧）。由规则引擎从一个站点的搜索结果页里解析出来。
+/// 单个搜索结果（一部剧集）。由规则引擎从一个站点的搜索结果页里解析出来。
 public struct SearchResult: Hashable, Sendable, Identifiable {
     public let id: UUID
     public var title: String

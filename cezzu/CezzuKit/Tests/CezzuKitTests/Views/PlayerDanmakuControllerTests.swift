@@ -37,7 +37,7 @@ struct PlayerDanmakuControllerTests {
 
     private func makeRequest() -> PlaybackRequest {
         let detail = AnimeDetail(
-            title: "测试番剧",
+            title: "测试剧集",
             detailURL: RefURL.make(refID: "demo", id: "item"),
             ruleName: "demo",
             roads: [

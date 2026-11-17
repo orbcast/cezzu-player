@@ -5,7 +5,7 @@ import SwiftData
 /// 观看历史的高层 store。所有 SwiftData 操作都在 MainActor 上 —— Apple 在 macOS 26
 /// 之前的 SwiftData 多线程访问有 bug，统一收口主线程是 v1 最稳的做法。
 ///
-/// **身份键**：同一番剧只保留一条记录。换源 / 换线路只更新该条的 `detailURL` /
+/// **身份键**：同一剧集只保留一条记录。换源 / 换线路只更新该条的 `detailURL` /
 /// `ruleName`，不再按源站 URL 各插一条（否则「最近观看」会出现一连串同名第 1 集）。
 ///
 /// **生命周期**：必须强引用 `ModelContainer`。`ModelContext` 不保证保住 container；
@@ -50,7 +50,7 @@ public final class HistoryStore {
 
     /// 在用户启动播放时调用，新建或更新条目。
     ///
-    /// 以番剧标题为身份（空标题回退 detailURL）。同一标题下的旧源记录会被合并删除。
+    /// 以剧集标题为身份（空标题回退 detailURL）。同一标题下的旧源记录会被合并删除。
     public func recordPlaybackStart(
         request: PlaybackRequest,
         coverURL: URL? = nil
@@ -75,7 +75,7 @@ public final class HistoryStore {
             existing.lastEpisodeIndex = episode.index
             existing.lastEpisodeTitle = episode.title
             existing.ruleName = request.anime.ruleName
-            // 已有当前帧封面时不要被番剧海报盖掉。
+            // 已有当前帧封面时不要被剧集海报盖掉。
             if !Self.isLocalFrameCover(existing.coverURLString) {
                 existing.coverURLString = resolvedCoverURL?.absoluteString ?? existing.coverURLString
             }
@@ -203,7 +203,7 @@ public final class HistoryStore {
 
     // MARK: - Identity / dedupe
 
-    /// 同一番剧的稳定身份：优先标题，空标题回退 detailURL。
+    /// 同一剧集的稳定身份：优先标题，空标题回退 detailURL。
     nonisolated public static func identityKey(title: String, detailURL: String) -> String {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? detailURL : trimmed

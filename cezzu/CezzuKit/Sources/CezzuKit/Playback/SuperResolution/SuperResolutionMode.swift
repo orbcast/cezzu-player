@@ -11,7 +11,7 @@ import MetalFX
 /// - `.efficiency`：基于 Core Image / Metal 的低成本上采样（Lanczos）。
 /// - `.quality`：MetalFX `MTLFXSpatialScaler`，通用空间超分。
 /// - `.anime4KFast` / `.anime4KHighQuality`：Anime4K CNN，专门针对动画的细线条、
-///   平坦色块和压缩振铃训练，同等开销下对番剧的效果明显好于通用超分。
+///   平坦色块和压缩振铃训练，同等开销下对剧集的效果明显好于通用超分。
 ///
 /// 注意：某档不可用时（模拟器没有 MetalFX、老 GPU 跑不动 Anime4K 高质档），
 /// `SuperResolutionCapability.resolved(_:on:)` 会顺着 `degraded` 链往下降。

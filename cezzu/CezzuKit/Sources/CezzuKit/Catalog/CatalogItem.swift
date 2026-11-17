@@ -1,6 +1,6 @@
 import Foundation
 
-/// Catalog.tv 番剧条目（subject type=2）。
+/// Catalog.tv 剧集条目（subject type=2）。
 ///
 /// 这是 Cezzu 主页 / 元数据详情页用的核心模型。
 /// 数据来自 https://api.目录站/v0/search/subjects （旧 API）

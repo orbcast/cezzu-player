@@ -128,7 +128,7 @@ public struct RegularFollowView: View {
             EmptyStateView(
                 systemImage: "star",
                 title: "还没有追剧",
-                message: "在详情页点一下星标，收藏的番剧会出现在这里。"
+                message: "在详情页点一下星标，收藏的剧集会出现在这里。"
             )
             .padding(.top, 32)
         } else {

@@ -16,7 +16,7 @@ public struct Episode: Codable, Hashable, Sendable, Identifiable {
 }
 
 /// 一条"线路"（road / mirror line）。当规则的 `muliSources = true` 时，
-/// 同一部番剧的详情页可能匹配多个 road，每个 road 是同一集的一组备用源。
+/// 同一部剧集的详情页可能匹配多个 road，每个 road 是同一集的一组备用源。
 public struct EpisodeRoad: Codable, Hashable, Sendable, Identifiable {
     public let id: UUID
     public var index: Int
@@ -31,7 +31,7 @@ public struct EpisodeRoad: Codable, Hashable, Sendable, Identifiable {
     }
 }
 
-/// 一部番剧的详情快照（从详情页抓出来的数据），主要用作 5 个屏幕之间传递的载体。
+/// 一部剧集的详情快照（从详情页抓出来的数据），主要用作 5 个屏幕之间传递的载体。
 public struct AnimeDetail: Codable, Hashable, Sendable, Identifiable {
     public var id: URL { detailURL }
     public var title: String

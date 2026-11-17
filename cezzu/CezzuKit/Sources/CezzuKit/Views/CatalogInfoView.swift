@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// 番剧元数据详情页 —— 进入该页之前由 HomeView 选中一个 CatalogItem。
+/// 剧集元数据详情页 —— 进入该页之前由 HomeView 选中一个 CatalogItem。
 ///
 /// 用户在这里看 Catalog 提供的元数据（封面 / 简介 / 评分 / tags / 日期）。
-/// 底部一个「在规则源中搜索」按钮 —— 把番剧名当关键字 push 回常规搜索流程。
+/// 底部一个「在规则源中搜索」按钮 —— 把剧名当关键字 push 回常规搜索流程。
 public struct CatalogInfoView: View {
     let item: CatalogItem
     var onSearchInRules: (String) -> Void

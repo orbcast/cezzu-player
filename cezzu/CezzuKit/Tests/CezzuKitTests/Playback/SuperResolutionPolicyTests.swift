@@ -250,7 +250,7 @@ struct SuperResolutionDisplayLinkPolicyTests {
 
     @Test("按片源帧率的 2 倍收敛")
     func targetsTwiceTheVideoRate() throws {
-        // 番剧最常见的 23.976fps：120Hz 屏幕上原本要空转 5 次才等到一帧新画面。
+        // 剧集最常见的 23.976fps：120Hz 屏幕上原本要空转 5 次才等到一帧新画面。
         let range = try #require(
             SuperResolutionDisplayLinkPolicy.preferredFrameRateRange(videoFrameRate: 23.976)
         )

@@ -37,7 +37,7 @@ struct PlaybackRequestTests {
                 })
         }
         let detail = AnimeDetail(
-            title: "测试番剧",
+            title: "测试剧集",
             detailURL: RefURL.make(refID: "demo", id: "item-1"),
             ruleName: "demo",
             roads: [road(0, prefix: "a"), road(1, prefix: "b")]

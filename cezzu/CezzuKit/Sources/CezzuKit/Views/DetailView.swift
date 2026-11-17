@@ -681,7 +681,7 @@ public final class DetailViewModel {
     }
 
     /// 按标题去 catalog 找回条目号。只认标题完全一致的那条 —— 宁可维持现状，
-    /// 也不要给用户挂一个别的番的封面和简介。
+    /// 也不要给用户挂一个别的剧的封面和简介。
     private func resolveSubjectIDByTitle() async -> Int? {
         let title = item.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return nil }

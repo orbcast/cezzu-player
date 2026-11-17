@@ -7,7 +7,7 @@ struct DanmakuProviderTests {
 
     private func request(episodeTitles: [String], episodeIndex: Int) -> PlaybackRequest {
         let detail = AnimeDetail(
-            title: "测试番剧",
+            title: "测试剧集",
             detailURL: RefURL.make(refID: "demo", id: "item"),
             ruleName: "demo",
             roads: [

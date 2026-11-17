@@ -60,7 +60,7 @@ public enum Route: Hashable, Sendable {
     case search
     case detail(CatalogItem)
     case historyDetail(HistoryResumeHint)
-    /// 首页分区「查看全部」；`tag` 为空表示热门番组。
+    /// 首页分区「查看全部」；`tag` 为空表示热门剧集。
     case tagSection(tag: String)
     case episodes(detail: AnimeDetail)
     case player(PlaybackRequest)

@@ -39,7 +39,7 @@ struct HistoryIdentityTests {
     func frameCacheFilenameStable() {
         let a = HistoryFrameCache.filename(for: "孤独摇滚")
         let b = HistoryFrameCache.filename(for: "孤独摇滚")
-        let c = HistoryFrameCache.filename(for: "别的番")
+        let c = HistoryFrameCache.filename(for: "别的剧")
         #expect(a == b)
         #expect(a != c)
         #expect(a.hasPrefix("frame-"))

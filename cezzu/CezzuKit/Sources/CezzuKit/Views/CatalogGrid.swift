@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 番剧宫格布局参数。按「固定 item 首选宽度」让 `LazyVGrid` 自适应列数。
+/// 剧集宫格布局参数。按「固定 item 首选宽度」让 `LazyVGrid` 自适应列数。
 enum CatalogGridLayout {
     static let horizontalSpacing: CGFloat = 14
     static let verticalSpacing: CGFloat = 18
@@ -32,7 +32,7 @@ enum CatalogGridLayout {
     }
 }
 
-/// 响应式番剧宫格。用 `GridItem.adaptive` 按首选宽度自动算列数；
+/// 响应式剧集宫格。用 `GridItem.adaptive` 按首选宽度自动算列数；
 /// footer 放在 grid 下方，避免再依赖 GeometryReader 量宽（ScrollView 里容易量错、锁死 2 列）。
 public struct CatalogGrid<Footer: View>: View {
     private let items: [CatalogItem]

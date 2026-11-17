@@ -45,7 +45,7 @@ public struct RegularSearchView: View {
                         SearchField(
                             text: $model.text,
                             height: metrics.fieldHeight,
-                            prompt: "番剧名、原名或关键词",
+                            prompt: "剧名、原名或关键词",
                             isFocused: $isInputFocused,
                             onSubmit: submit,
                             onChange: { model.textChanged() },
@@ -85,11 +85,11 @@ public struct RegularSearchView: View {
                 .font(.system(size: 12, weight: .semibold))
                 .tracking(3)
                 .foregroundStyle(SearchStyle.textTertiary)
-            Text("找番")
+            Text("找剧")
                 .font(.system(size: metrics.titleSize, weight: .bold))
                 .tracking(2)
                 .foregroundStyle(SearchStyle.textPrimary)
-            Text("按番剧名检索，或用标签 / 评分 / 年代圈定范围。")
+            Text("按剧名检索，或用标签 / 评分 / 年代圈定范围。")
                 .font(.subheadline)
                 .foregroundStyle(SearchStyle.textSecondary)
         }
@@ -123,7 +123,7 @@ public struct RegularSearchView: View {
         VStack(alignment: .leading, spacing: metrics.sectionSpacing) {
             EmptyStateView(
                 systemImage: "magnifyingglass",
-                title: "没有找到匹配的番剧",
+                title: "没有找到匹配的剧集",
                 message: "换个说法，或松一松上面的筛选。"
             )
             SearchTagCloudSection(model: model, title: "换个标签试试")

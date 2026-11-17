@@ -12,7 +12,7 @@ enum CatalogCardLayout {
     static let hoverImageScale: CGFloat = 1.08
 }
 
-/// 番剧封面卡 —— HomeView 宫格 cell 与 CatalogInfoView header 共用。
+/// 剧集封面卡 —— HomeView 宫格 cell 与 CatalogInfoView header 共用。
 ///
 /// 一张 3:4 比例的封面 + 下方标题。封面底部叠一层渐变元数据。
 public struct CatalogCard: View {
