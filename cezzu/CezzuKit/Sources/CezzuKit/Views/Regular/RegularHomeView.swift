@@ -129,6 +129,21 @@ public struct RegularHomeView: View {
                 }
             }
 
+            if model.sections.isEmpty && !model.hasLoadedLayout {
+                // Banner 可能来自磁盘缓存先出来；分区还没回应时别让 hero 孤零零一屏。
+                CatalogSectionRow(
+                    content: HomeSectionContent(
+                        section: HomeSection(id: "loading", title: "加载中"), isLoading: true),
+                    cardWidth: CatalogSectionLayout.regularCardWidth,
+                    subtitle: nil,
+                    onTapItem: onTapItem,
+                    onTapSeeAll: {},
+                    onRetry: {}
+                )
+                .padding(.horizontal, RegularHomeHeroLayout.horizontalPadding)
+                .padding(.vertical, 16)
+            }
+
             if model.sections.isEmpty && model.hasLoadedLayout {
                 HomeEmptyNotice(error: model.layoutError) {
                     Task { await model.reload() }
